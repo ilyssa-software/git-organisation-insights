@@ -282,16 +282,30 @@
         });
     }
 
-    function fetchIssues(repoName, labelTitles, completion) {
+    function fetchIssues(repoName, labelTitles, completion, page, previouslyFetchedIssues) {
         const groupNameEncoded = encodeURI(groupName);
         const repoNameEncoded = encodeURI(repoName);
         const labelTitlesQueryPart = labelTitles.map(labelTitle => `label_name[]=${encodeURI(labelTitle)}`).join('&');
+
+        let url = `https://gitlab.com/${groupNameEncoded}/${repoNameEncoded}/issues?scope=all&utf8=%E2%9C%93&state=all&${labelTitlesQueryPart}`;
+        if (typeof page === 'number') {
+            url += `&page=${page}`;
+        } else {
+            page = 1;
+            previouslyFetchedIssues = [];
+        }
+
         GM_xmlhttpRequest({
             method: 'GET',
-            url: `https://gitlab.com/${groupNameEncoded}/${repoNameEncoded}/issues?scope=all&utf8=%E2%9C%93&state=all&${labelTitlesQueryPart}`,
+            url,
             onload: response => {
-                const issues = parseIssuesResponseText(response.responseText);
-                completion(issues);
+                const [currentlyFetchedIssues, nextPageUrl] = parseIssuesResponseText(response.responseText);
+                const issues = previouslyFetchedIssues.concat(currentlyFetchedIssues);
+                if (nextPageUrl) {
+                    fetchIssues(repoName, labelTitles, completion, page + 1, issues);
+                } else {
+                    completion(issues);
+                }
             }
         });
     }
@@ -322,7 +336,17 @@
 
         const issueElements = Array.from(rootElement.getElementsByClassName('issuable-info-container'));
 
-        return issueElements.map(issueElement => parseIssueElement(issueElement));
+        const paginationElement = rootElement.getElementsByClassName('pagination')[0];
+
+        let nextPageUrl = null;
+        if (paginationElement && paginationElement.children) {
+            nextPageUrl = paginationElement.children[paginationElement.children.length - 1].children[0].getAttribute('href');
+            if (nextPageUrl === '#') {
+                nextPageUrl = null;
+            }
+        }
+
+        return [issueElements.map(issueElement => parseIssueElement(issueElement)), nextPageUrl];
     }
 
     function parseIssueElement(issueElement) {
