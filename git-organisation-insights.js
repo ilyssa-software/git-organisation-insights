@@ -187,7 +187,7 @@
             '</span>' +
             '<span v-if="index < milestones.length - 1" class="gi-separator"> | </span>' +
             '</span>' +
-            '<div v-if="milestones.length > selectedIndex">{{ milestones[selectedIndex].range }}</div>' +
+            '<div v-if="milestones.length > selectedIndex">From {{ milestones[selectedIndex].start_date }} to {{ milestones[selectedIndex].due_date }}</div>' +
             '</div>'
         });
     }
@@ -234,8 +234,8 @@
             template: '<div>' +
             '<h3><a class="gi-default" target="_blank" v-bind:href="\'https://gitlab.com/\' + groupName + \'/\' + repoName + \'/issues\'">{{ repoName }}</a></h3>' +
             '<ul>' +
-            '<li v-for="issue in issues" v-bind:class="{ \'gi-done\': issue.isClosed, \'gi-important\': goalMilestone && (issue.milestoneTitle === goalMilestone.title) }">' +
-            '<span class="gi-task-assignee">[{{ issue.assignee.name }}]</span> <a target="_blank" class="gi-blend" v-bind:href="issue.url">{{ issue.title }}</a>' +
+            '<li v-for="issue in issues" v-bind:class="{ \'gi-done\': issue.state === \'closed\', \'gi-important\': goalMilestone && issue.milestone && (issue.milestone.title === goalMilestone.title) }">' +
+            '<span class="gi-task-assignee">[{{ (issue.assignee && issue.assignee.name) || "Unassigned" }}]</span> <a target="_blank" class="gi-blend" v-bind:href="issue.web_url">{{ issue.title }}</a>' +
             '</li></ul></div>'
         });
     }
@@ -271,23 +271,23 @@
     // - Fetching
 
     function fetchMilestones(groupName, completion) {
-        const groupNameEncoded = encodeURI(groupName);
+        const groupId = encodeURIComponent(groupName);
         GM_xmlhttpRequest({
             method: 'GET',
-            url: `https://gitlab.com/groups/${groupNameEncoded}/-/milestones`,
+            url: `https://gitlab.com/api/v4/groups/${groupId}/milestones?state=active&per_page=100`,
             onload: response => {
-                const milestones = parseMilestonesResponseText(response.responseText);
+                if (response.status != 200) return;
+                const milestones = JSON.parse(response.responseText);
                 completion(milestones);
             }
         });
     }
 
     function fetchIssues(repoName, labelTitles, completion, page, previouslyFetchedIssues) {
-        const groupNameEncoded = encodeURI(groupName);
-        const repoNameEncoded = encodeURI(repoName);
-        const labelTitlesQueryPart = labelTitles.map(labelTitle => `label_name[]=${encodeURI(labelTitle)}`).join('&');
+        const projectId = encodeURIComponent(`${groupName}/${repoName}`);
+        const queryPartLabels = labelTitles.map(labelTitle => labelTitle.replace(' ', '+')).join(',');
 
-        let url = `https://gitlab.com/${groupNameEncoded}/${repoNameEncoded}/issues?scope=all&utf8=%E2%9C%93&state=all&${labelTitlesQueryPart}`;
+        let url = `https://gitlab.com/api/v4/projects/${projectId}/issues?scope=all&state=all&per_page=100&labels=${queryPartLabels}`;
         if (typeof page === 'number') {
             url += `&page=${page}`;
         } else {
@@ -299,94 +299,17 @@
             method: 'GET',
             url,
             onload: response => {
-                const [currentlyFetchedIssues, nextPageUrl] = parseIssuesResponseText(response.responseText);
+                if (response.status != 200) return;
+                const currentlyFetchedIssues = JSON.parse(response.responseText);
+                const hasNextPage = response.responseHeaders.includes('rel="next"');
                 const issues = previouslyFetchedIssues.concat(currentlyFetchedIssues);
-                if (nextPageUrl) {
+                if (hasNextPage) {
                     fetchIssues(repoName, labelTitles, completion, page + 1, issues);
                 } else {
                     completion(issues);
                 }
             }
         });
-    }
-
-    // - Parsing
-
-    function parseMilestonesResponseText(responseText) {
-        const rootElement = document.createElement('html');
-        rootElement.innerHTML = responseText;
-
-        const milestoneElements = Array.from(rootElement.getElementsByClassName('milestone-open'));
-
-        return milestoneElements.map(milestoneElement => parseMilestoneElement(milestoneElement));
-    }
-
-    function parseMilestoneElement(milestoneElement) {
-        const milestoneRangeElement = milestoneElement.getElementsByClassName('milestone-range')[0];
-        return {
-            title: milestoneElement.getElementsByClassName('append-bottom-5')[0].children[0].children[0].textContent,
-            url: milestoneElement.getElementsByClassName('append-bottom-5')[0].children[0].children[0].getAttribute('href'),
-            range: milestoneRangeElement && milestoneRangeElement.textContent,
-        };
-    }
-
-    function parseIssuesResponseText(responseText) {
-        const rootElement = document.createElement('html');
-        rootElement.innerHTML = responseText;
-
-        const issueElements = Array.from(rootElement.getElementsByClassName('issuable-info-container'));
-
-        const paginationElement = rootElement.getElementsByClassName('pagination')[0];
-
-        let nextPageUrl = null;
-        if (paginationElement && paginationElement.children) {
-            nextPageUrl = paginationElement.children[paginationElement.children.length - 1].children[0].getAttribute('href');
-            if (nextPageUrl === '#') {
-                nextPageUrl = null;
-            }
-        }
-
-        return [issueElements.map(issueElement => parseIssueElement(issueElement)), nextPageUrl];
-    }
-
-    function parseIssueElement(issueElement) {
-        const milestoneElement = issueElement.getElementsByClassName('issuable-milestone')[0];
-        const issueTitleTextElement = issueElement.getElementsByClassName('issue-title-text')[0];
-        return {
-            reference: issueElement.getElementsByClassName('issuable-reference')[0].textContent.trim(),
-            url: issueTitleTextElement.getElementsByTagName('a')[0].getAttribute('href'),
-            title: issueTitleTextElement.children[issueTitleTextElement.children.length - 1].textContent.trim(),
-            author: issueElement.getElementsByClassName('author')[0].textContent.trim(),
-            assignee: parseAuthorLinkElement(issueElement.getElementsByClassName('author-link')[1]),
-            labels: Array.from(issueElement.getElementsByClassName('label-link')).map(element => parseLabelLinkElement(element)),
-            milestoneTitle: milestoneElement && milestoneElement.children[0].textContent.trim(),
-            isClosed: issueElement.innerHTML.includes('CLOSED')
-        };
-    }
-
-    function parseAuthorLinkElement(authorLinkElement) {
-        if (!authorLinkElement) {
-            return {
-                name: 'Unassigned',
-                username: 'unassigned',
-                url: null,
-            };
-        }
-        const linkTitle = authorLinkElement.getAttribute('title');
-        const linkHref = authorLinkElement.getAttribute('href');
-        return {
-            name: /.*to\s*(.*)/g.exec(linkTitle)[1],
-            username: linkHref.substr(1),
-            url: linkHref
-        };
-    }
-
-    function parseLabelLinkElement(labelLinkElement) {
-        return {
-            title: labelLinkElement.children[0].textContent.trim(),
-            color: /.*background-color:\s*(.*);.*/g.exec(labelLinkElement.children[0].getAttribute('style'))[1],
-            url: labelLinkElement.getAttribute('href')
-        };
     }
 
     // ---- Main Logic
