@@ -169,8 +169,10 @@
                     color: gray;
                 }
                 .gi-task-time-stats {
+                    color: green;
                 }
-                .gi-task-time-stats-separator {
+                .gi-time-stats-separator {
+                    color: lightgreen;
                 }
                 .gi-done {
                     text-decoration: line-through;
@@ -391,7 +393,20 @@
                                             (issue.milestone.title === goalMilestone.title)
                         }"
                     >
-                        <span class="gi-task-assignee">
+                        <span
+                            class="gi-task-assignee"
+                            v-bind:title="
+                                            (issue.assignee &&
+                                                (
+                                                    'Sprint Time: ' +
+                                                    (timeSpentByUserId[issue.assignee.id] || 0) +
+                                                    '/' +
+                                                    (timeEstimatesByUserId[issue.assignee.id] || 0)
+                                                )
+                                            ) ||
+                                            'No time data'
+                                        "
+                        >
                             [{{ (issue.assignee && issue.assignee.name) || "Unassigned" }}]
                         </span>
                         <span v-bind:class="{ 'gi-done': issue.state === 'closed' }">
@@ -400,20 +415,11 @@
                             </a>
                         </span>
                         <span v-if="issue.time_stats.human_time_estimate" class="gi-task-time-stats">
-                            <span>(</span>
                             <span v-if="issue.time_stats.human_total_time_spent">
                                 <span>{{ issue.time_stats.human_total_time_spent }}</span>
-                                <span class="gi-task-time-stats-separator">/</span>
+                                <span class="gi-time-stats-separator">/</span>
                             </span>
                             <span>{{ issue.time_stats.human_time_estimate }}</span>
-                            <span>)</span>
-                        </span>
-                        <span v-if="issue.assignee" class="gi-task-time-stats">
-                            <span>(</span>
-                            <span>{{ timeSpentByUserId[issue.assignee.id] || 0 }}</span>
-                            <span class="gi-task-time-stats-separator">/</span>
-                            <span>{{ timeEstimatesByUserId[issue.assignee.id] || 0 }}</span>
-                            <span>)</span>
                         </span>
                     </li>
                 </ul>
