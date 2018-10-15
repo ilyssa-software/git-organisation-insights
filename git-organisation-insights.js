@@ -74,9 +74,12 @@
     }
 
     function showInsights() {
-        const mainApp = addMainApp();
-        mainApp.populateGoals();
-        mainApp.populateTasks();
+        const isFirstInit = (mainApp === null);
+        addMainApp();
+        if (isFirstInit) {
+            mainApp.populateGoals();
+            mainApp.populateTasks();
+        }
         setMainAppVisibility(true);
     }
 
