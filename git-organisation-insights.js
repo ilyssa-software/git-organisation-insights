@@ -190,6 +190,9 @@
                 input[type=radio].gi-default {
                     margin: 0 5px 0 10px;
                 }
+                select.gi-default {
+                    margin-left: 10px;
+                }
             </style>
         `;
     }
@@ -218,9 +221,10 @@
                 v-bind:repo-names="repoNames"
                 v-bind:issues-by-repo-name="issuesByRepoName"
                 v-bind:sprint-label-titles="sprintLabelTitles"
-                v-bind:populate-tasks="populateTasks"
+                v-bind:assignees-by-id="assigneesById"
                 v-bind:time-estimates-by-user-id="timeEstimatesByUserId"
                 v-bind:time-spent-by-user-id="timeSpentByUserId"
+                v-bind:populate-tasks="populateTasks"
             >
             </section-tasks>
         `;
@@ -236,7 +240,7 @@
                 issuesByRepoName: {},
                 assigneesById: {},
                 timeEstimatesByUserId: {},
-                timeSpentByUserId: {}
+                timeSpentByUserId: {},
             },
             methods: {
                 setSelectedMilestoneIndex,
@@ -289,7 +293,7 @@
 
     function registerComponentSectionTasks() {
         registerComponentTaskFilters();
-        registerComponentRepoTasksTree();
+        registerComponentRepoTasksList();
 
         Vue.component('section-tasks', {
             props: [
@@ -298,30 +302,46 @@
                 'repoNames',
                 'issuesByRepoName',
                 'sprintLabelTitles',
-                'populateTasks',
+                'assigneesById',
                 'timeEstimatesByUserId',
                 'timeSpentByUserId',
+                'populateTasks',
             ],
+            data: () => ({
+                filter: {
+                    assigneeId: null,
+                }
+            }),
+            methods: {
+                setFilter: function (filterDiff) {
+                    this.filter = Object.assign({}, Object.assign(this.filter, filterDiff));
+                },
+                applyFilter: function (issues) {
+                    return issues.filter((issue) => (!this.filter.assigneeId || (issue.assignee && issue.assignee.id === this.filter.assigneeId)));
+                }
+            },
             template: `
             <div>
                 <h2>Tasks</h2>
                 <task-filters
                     v-bind:sprint-label-titles="sprintLabelTitles"
+                    v-bind:assignees-by-id="assigneesById"
                     v-bind:populate-tasks="populateTasks"
+                    v-bind:set-filter="setFilter"
                 >
                 </task-filters>
                 <table class="gi-tasks">
                     <tr>
                         <td style="vertical-align: top;" v-for="repoName in repoNames">
-                            <repo-tasks-tree
+                            <repo-tasks-lists
                                 v-bind:goal-milestone="goalMilestone"
                                 v-bind:group-name="groupName"
                                 v-bind:repo-name="repoName"
-                                v-bind:issues="issuesByRepoName[repoName]"
+                                v-bind:issues="issuesByRepoName[repoName] && applyFilter(issuesByRepoName[repoName])"
                                 v-bind:time-estimates-by-user-id="timeEstimatesByUserId"
                                 v-bind:time-spent-by-user-id="timeSpentByUserId"
                             >
-                            </repo-tasks-tree>
+                            </repo-tasks-lists>
                         </td>
                     </tr>
                 </table>
@@ -334,37 +354,66 @@
         Vue.component('task-filters', {
             props: [
                 'sprintLabelTitles',
+                'assigneesById',
                 'populateTasks',
+                'setFilter',
             ],
             data: () => ({
                 selectedSprintIndex: 0,
             }),
             methods: {
-                handleChange: function (index) {
+                handleSprintChange: function (index) {
                     this.selectedSprintIndex = index;
                     this.populateTasks([sprintLabelTitles[index]]);
                 },
             },
             template: `
-            <div>
-                <span v-for="(sprintLabelTitle, index) in sprintLabelTitles">
-                    <input
-                        class="gi-default"
-                        type="radio"
-                        name="sprint"
-                        v-bind:value="sprintLabelTitle"
-                        :checked="(index === selectedSprintIndex)"
-                        v-on:click="() => handleChange(index)"
-                    />
-                    <label>{{ sprintLabelTitle }}</label>
-                </span>
-            </div>
+            <table>
+                <tr>
+                    <td>
+                        <strong>Assignee:</strong>
+                    </td>
+                    <td>
+                        <select class="gi-default">
+                            <option
+                                v-on:click="() => setFilter({ 'assigneeId': null })"
+                            >
+                                Any
+                            </option>
+                            <option
+                                v-for="assignee in assigneesById"
+                                v-on:click="() => setFilter({ 'assigneeId': assignee.id })"
+                            >
+                                {{ assignee.name }}
+                            </option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong>Sprint:</strong>
+                    </td>
+                    <td>
+                        <span v-for="(sprintLabelTitle, index) in sprintLabelTitles">
+                            <input
+                                class="gi-default"
+                                type="radio"
+                                name="sprint"
+                                v-bind:value="sprintLabelTitle"
+                                :checked="(index === selectedSprintIndex)"
+                                v-on:click="() => handleSprintChange(index)"
+                            />
+                            <label>{{ sprintLabelTitle }}</label>
+                        </span>
+                    </td>
+                </tr>
+            </table>
             `
         });
     }
 
-    function registerComponentRepoTasksTree() {
-        Vue.component('repo-tasks-tree', {
+    function registerComponentRepoTasksList() {
+        Vue.component('repo-tasks-lists', {
             props: [
                 'goalMilestone',
                 'groupName',
@@ -384,7 +433,7 @@
                         {{ repoName }}
                     </a>
                 </h3>
-                <ul class="gi-task-list">
+                <ul v-if="issues" class="gi-task-list">
                     <li
                         v-for="issue in issues"
                         v-bind:class="{
@@ -443,11 +492,11 @@
     function populateTasks(labelTitles) {
         const handleFetchedIssues = (repoName, issues) => {
             let issuesByRepoName = mainApp.issuesByRepoName;
-            issuesByRepoName[repoName] = issues;
-            mainApp.issuesByRepoName = Object.assign({}, issuesByRepoName);
+            let assigneesById = mainApp.assigneesById;
+            let timeEstimatesByUserId = mainApp.timeEstimatesByUserId;
+            let timeSpentByUserId = mainApp.timeSpentByUserId;
 
-            mainApp.timeEstimatesByUserId = {};
-            mainApp.timeSpentByUserId = {};
+            issuesByRepoName[repoName] = issues;
 
             for (const issue of issues) {
                 if (issue.assignee) {
@@ -463,15 +512,25 @@
                 }
 
                 for (const assignee of issue.assignees) {
-                    if (mainApp.assigneesById[assignee.id]) continue;
-                    mainApp.assigneesById[assignee.id] = assignee;
+                    if (assigneesById[assignee.id]) continue;
+                    assigneesById[assignee.id] = assignee;
                 }
             }
+
+            mainApp.issuesByRepoName = Object.assign({}, issuesByRepoName);
+            mainApp.assigneesById = Object.assign({}, assigneesById);
+            mainApp.timeEstimatesByUserId = Object.assign({}, timeEstimatesByUserId);;
+            mainApp.timeSpentByUserId = Object.assign({}, timeSpentByUserId);
         };
 
         if (!labelTitles) {
             labelTitles = [sprintLabelTitles[0]];
         }
+
+        mainApp.issuesByRepoName = {};
+        mainApp.assigneesById = {};
+        mainApp.timeEstimatesByUserId = {};
+        mainApp.timeSpentByUserId = {};
 
         for (const repoName of repoNames) {
             fetchIssues(repoName, labelTitles, issues => handleFetchedIssues(repoName, issues));
