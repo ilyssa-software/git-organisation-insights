@@ -119,22 +119,77 @@
     }
 
     function generateMainAppStylesheet() {
-        return '<style>' +
-            '.gi-container { position: fixed; z-index: 1000; left: 0; right: 0; top: 0; bottom: 0; margin: 100px; padding: 10px; background: #fff; border: 3px solid #292961; overflow: scroll }' +
-            'button.gi-close { position: fixed; left: 100px; top: 76px; background-color: #fff; color: #db3b21; border-color: #db3b21 }' +
-            '.gi-important { color: #de7e00; font-weight: bold }' +
-            '.gi-goal { text-decoration: none; text-transform: uppercase; font-weight: bold; color: gray; cursor: pointer }' +
-            '.gi-separator { font-weight: bolder; font-size: 24px; color: purple }' +
-            'table.gi-tasks { width: 100% }' +
-            '.gi-task-list { list-style: none; padding: 0 }' +
-            '.gi-task-assignee { color: gray }' +
-            '.gi-task-time-stats { }' +
-            '.gi-task-time-stats-separator { }' +
-            '.gi-done { text-decoration: line-through; text-decoration-color: black; }' +
-            'a.gi-default { text-decoration: none; color: black }' +
-            'a.gi-blend { text-decoration: inherit; color:inherit }' +
-            'input[type=radio].gi-default { margin: 0 5px 0 10px; }' +
-            '</style>';
+        return `
+            <style>
+                .gi-container {
+                    position: fixed;
+                    z-index: 1000;
+                    left: 0;
+                    right: 0;
+                    top: 0;
+                    bottom: 0;
+                    margin: 100px;
+                    padding: 10px;
+                    background: #fff;
+                    border: 3px solid #292961;
+                    overflow: scroll;
+                }
+                button.gi-close {
+                    position: fixed;
+                    left: 100px;
+                    top: 76px;
+                    background-color: #fff;
+                    color: #db3b21;
+                    border-color: #db3b21;
+                }
+                .gi-important {
+                    color: #de7e00;
+                    font-weight: bold;
+                }
+                .gi-goal {
+                    text-decoration: none;
+                    text-transform: uppercase;
+                    font-weight: bold;
+                    color: gray;
+                    cursor: pointer;
+                }
+                .gi-separator {
+                    font-weight: bolder;
+                    font-size: 24px;
+                    color: purple;
+                }
+                table.gi-tasks {
+                    width: 100%;
+                }
+                .gi-task-list {
+                    list-style: none;
+                    padding: 0;
+                }
+                .gi-task-assignee {
+                    color: gray;
+                }
+                .gi-task-time-stats {
+                }
+                .gi-task-time-stats-separator {
+                }
+                .gi-done {
+                    text-decoration: line-through;
+                    text-decoration-color:
+                    black;
+                }
+                a.gi-default {
+                    text-decoration: none;
+                    color: black;
+                }
+                a.gi-blend {
+                    text-decoration: inherit;
+                    color:inherit;
+                }
+                input[type=radio].gi-default {
+                    margin: 0 5px 0 10px;
+                }
+            </style>
+        `;
     }
 
     function createMainApp(elementId) {
@@ -147,9 +202,26 @@
         registerComponentSectionTasks();
 
         const mainAppElement = document.getElementById(elementId);
-        mainAppElement.innerHTML = '<close-insights-button></close-insights-button>' +
-            '<section-goals v-bind:milestones="milestones" v-bind:selected-index="selectedMilestoneIndex" v-bind:set-selected-index="setSelectedMilestoneIndex"></section-goals>' +
-            '<section-tasks v-bind:goal-milestone="milestones[selectedMilestoneIndex]" v-bind:group-name="groupName" v-bind:repo-names="repoNames" v-bind:issues-by-repo-name="issuesByRepoName" v-bind:sprint-label-titles="sprintLabelTitles" v-bind:populate-tasks="populateTasks" v-bind:time-estimates-by-user-id="timeEstimatesByUserId" v-bind:time-spent-by-user-id="timeSpentByUserId"></section-tasks>';
+        mainAppElement.innerHTML = `
+            <close-insights-button></close-insights-button>
+            <section-goals
+                v-bind:milestones="milestones"
+                v-bind:selected-index="selectedMilestoneIndex"
+                v-bind:set-selected-index="setSelectedMilestoneIndex"
+            >
+            </section-goals>
+            <section-tasks
+                v-bind:goal-milestone="milestones[selectedMilestoneIndex]"
+                v-bind:group-name="groupName"
+                v-bind:repo-names="repoNames"
+                v-bind:issues-by-repo-name="issuesByRepoName"
+                v-bind:sprint-label-titles="sprintLabelTitles"
+                v-bind:populate-tasks="populateTasks"
+                v-bind:time-estimates-by-user-id="timeEstimatesByUserId"
+                v-bind:time-spent-by-user-id="timeSpentByUserId"
+            >
+            </section-tasks>
+        `;
 
         mainApp = new Vue({
             el: `#${elementId}`,
@@ -189,17 +261,27 @@
 
     function registerComponentSectionGoals() {
         Vue.component('section-goals', {
-            props: ['milestones', 'selectedIndex', 'setSelectedIndex'],
-            template: '<div>' +
-            '<h2>Goal Timeline</h2>' +
-            '<span v-for="(milestone, index) in milestones">' +
-            '<span class="gi-goal" v-on:click="() => setSelectedIndex(index)">' +
-            `<span v-bind:class="{ \'gi-important\': index === selectedIndex }">{{ milestone.title.substr(${goalMilestoneTitlePrefix.length}) }}</span>` +
-            '</span>' +
-            '<span v-if="index < milestones.length - 1" class="gi-separator"> | </span>' +
-            '</span>' +
-            '<div v-if="milestones.length > selectedIndex">From {{ milestones[selectedIndex].start_date }} to {{ milestones[selectedIndex].due_date }}</div>' +
-            '</div>'
+            props: [
+                'milestones',
+                'selectedIndex',
+                'setSelectedIndex',
+            ],
+            template: `
+            <div>
+                <h2>Goal Timeline</h2>
+                <span v-for="(milestone, index) in milestones">
+                    <span class="gi-goal" v-on:click="() => setSelectedIndex(index)">
+                        <span v-bind:class="{ 'gi-important': index === selectedIndex }">
+                            {{ milestone.title.substr(${goalMilestoneTitlePrefix.length}) }}
+                        </span>
+                    </span>
+                    <span v-if="index < milestones.length - 1" class="gi-separator"> | </span>
+                </span>
+                <div v-if="milestones.length > selectedIndex">
+                    From {{ milestones[selectedIndex].start_date }} to {{ milestones[selectedIndex].due_date }}
+                </div>
+            </div>
+            `
         });
     }
 
@@ -208,20 +290,50 @@
         registerComponentRepoTasksTree();
 
         Vue.component('section-tasks', {
-            props: ['goalMilestone', 'groupName', 'repoNames', 'issuesByRepoName', 'sprintLabelTitles', 'populateTasks', 'timeEstimatesByUserId', 'timeSpentByUserId'],
-            template: '<div>' +
-            '<h2>Tasks</h2>' +
-            '<task-filters v-bind:sprint-label-titles="sprintLabelTitles" v-bind:populate-tasks="populateTasks"></task-filters>' +
-            '<table class="gi-tasks"><tr>' +
-            '<td style="vertical-align: top;" v-for="repoName in repoNames">' +
-            '<repo-tasks-tree v-bind:goal-milestone="goalMilestone" v-bind:group-name="groupName" v-bind:repo-name="repoName" v-bind:issues="issuesByRepoName[repoName]" v-bind:time-estimates-by-user-id="timeEstimatesByUserId" v-bind:time-spent-by-user-id="timeSpentByUserId"></repo-tasks-tree>' +
-            '</td></tr></table></div>'
+            props: [
+                'goalMilestone',
+                'groupName',
+                'repoNames',
+                'issuesByRepoName',
+                'sprintLabelTitles',
+                'populateTasks',
+                'timeEstimatesByUserId',
+                'timeSpentByUserId',
+            ],
+            template: `
+            <div>
+                <h2>Tasks</h2>
+                <task-filters
+                    v-bind:sprint-label-titles="sprintLabelTitles"
+                    v-bind:populate-tasks="populateTasks"
+                >
+                </task-filters>
+                <table class="gi-tasks">
+                    <tr>
+                        <td style="vertical-align: top;" v-for="repoName in repoNames">
+                            <repo-tasks-tree
+                                v-bind:goal-milestone="goalMilestone"
+                                v-bind:group-name="groupName"
+                                v-bind:repo-name="repoName"
+                                v-bind:issues="issuesByRepoName[repoName]"
+                                v-bind:time-estimates-by-user-id="timeEstimatesByUserId"
+                                v-bind:time-spent-by-user-id="timeSpentByUserId"
+                            >
+                            </repo-tasks-tree>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            `
         });
     }
 
     function registerComponentTaskFilters() {
         Vue.component('task-filters', {
-            props: ['sprintLabelTitles', 'populateTasks'],
+            props: [
+                'sprintLabelTitles',
+                'populateTasks',
+            ],
             data: () => ({
                 selectedSprintIndex: 0,
             }),
@@ -231,42 +343,82 @@
                     this.populateTasks([sprintLabelTitles[index]]);
                 },
             },
-            template: '<div>' +
-            '<span v-for="(sprintLabelTitle, index) in sprintLabelTitles">' +
-            '<input class="gi-default" type="radio" name="sprint" v-bind:value="sprintLabelTitle" :checked="(index === selectedSprintIndex)" v-on:click="() => handleChange(index)" />' +
-            '<label>{{ sprintLabelTitle }}</label>' +
-            '</span></div>'
+            template: `
+            <div>
+                <span v-for="(sprintLabelTitle, index) in sprintLabelTitles">
+                    <input
+                        class="gi-default"
+                        type="radio"
+                        name="sprint"
+                        v-bind:value="sprintLabelTitle"
+                        :checked="(index === selectedSprintIndex)"
+                        v-on:click="() => handleChange(index)"
+                    />
+                    <label>{{ sprintLabelTitle }}</label>
+                </span>
+            </div>
+            `
         });
     }
 
     function registerComponentRepoTasksTree() {
         Vue.component('repo-tasks-tree', {
-            props: ['goalMilestone', 'groupName', 'repoName', 'issues', 'timeEstimatesByUserId', 'timeSpentByUserId'],
-            template: '<div>' +
-            '<h3><a class="gi-default" target="_blank" v-bind:href="\'https://gitlab.com/\' + groupName + \'/\' + repoName + \'/issues\'">{{ repoName }}</a></h3>' +
-            '<ul class="gi-task-list">' +
-            '<li v-for="issue in issues" v-bind:class="{ \'gi-important\': goalMilestone && issue.milestone && (issue.milestone.title === goalMilestone.title) }">' +
-            '<span class="gi-task-assignee">' +
-            '[{{ (issue.assignee && issue.assignee.name) || "Unassigned" }}]' +
-            '</span>' +
-            '&nbsp;' +
-            '<span v-bind:class="{ \'gi-done\': issue.state === \'closed\' }">' +
-            '<a target="_blank" class="gi-blend" v-bind:href="issue.web_url">{{ issue.title }}</a>' +
-            '</span>' +
-            '&nbsp;' +
-            '<span v-if="issue.time_stats.human_time_estimate" class="gi-task-time-stats">(' +
-            '<span v-if="issue.time_stats.human_total_time_spent">{{ issue.time_stats.human_total_time_spent }}' +
-            '<span class="gi-task-time-stats-separator">/</span>' +
-            '</span>' +
-            '{{ issue.time_stats.human_time_estimate }}' +
-            ')</span>' +
-            '<span v-if="issue.assignee" class="gi-task-time-stats">(' +
-            '<span>{{ timeSpentByUserId[issue.assignee.id] || 0 }}' +
-            '<span class="gi-task-time-stats-separator">/</span>' +
-            '</span>' +
-            '{{ timeEstimatesByUserId[issue.assignee.id] || 0 }}' +
-            ')</span>' +
-            '</li></ul></div>'
+            props: [
+                'goalMilestone',
+                'groupName',
+                'repoName',
+                'issues',
+                'timeEstimatesByUserId',
+                'timeSpentByUserId',
+            ],
+            template: `
+            <div>
+                <h3>
+                    <a
+                        class="gi-default"
+                        target="_blank"
+                        v-bind:href="'https://gitlab.com/' + groupName + '/' + repoName + '/issues'"
+                    >
+                        {{ repoName }}
+                    </a>
+                </h3>
+                <ul class="gi-task-list">
+                    <li
+                        v-for="issue in issues"
+                        v-bind:class="{
+                            'gi-important': goalMilestone &&
+                                            issue.milestone &&
+                                            (issue.milestone.title === goalMilestone.title)
+                        }"
+                    >
+                        <span class="gi-task-assignee">
+                            [{{ (issue.assignee && issue.assignee.name) || "Unassigned" }}]
+                        </span>
+                        <span v-bind:class="{ 'gi-done': issue.state === 'closed' }">
+                            <a target="_blank" class="gi-blend" v-bind:href="issue.web_url">
+                                {{ issue.title }}
+                            </a>
+                        </span>
+                        <span v-if="issue.time_stats.human_time_estimate" class="gi-task-time-stats">
+                            <span>(</span>
+                            <span v-if="issue.time_stats.human_total_time_spent">
+                                <span>{{ issue.time_stats.human_total_time_spent }}</span>
+                                <span class="gi-task-time-stats-separator">/</span>
+                            </span>
+                            <span>{{ issue.time_stats.human_time_estimate }}</span>
+                            <span>)</span>
+                        </span>
+                        <span v-if="issue.assignee" class="gi-task-time-stats">
+                            <span>(</span>
+                            <span>{{ timeSpentByUserId[issue.assignee.id] || 0 }}</span>
+                            <span class="gi-task-time-stats-separator">/</span>
+                            <span>{{ timeEstimatesByUserId[issue.assignee.id] || 0 }}</span>
+                            <span>)</span>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            `
         });
     }
 
@@ -292,14 +444,17 @@
             mainApp.timeSpentByUserId = {};
 
             for (const issue of issues) {
-                if (!mainApp.timeEstimatesByUserId[issue.assignee.id]) {
-                    mainApp.timeEstimatesByUserId[issue.assignee.id] = 0;
+                if (issue.assignee) {
+                    // Make time statistics count only for the main assignee.
+                    if (!mainApp.timeEstimatesByUserId[issue.assignee.id]) {
+                        mainApp.timeEstimatesByUserId[issue.assignee.id] = 0;
+                    }
+                    if (!mainApp.timeSpentByUserId[issue.assignee.id]) {
+                        mainApp.timeSpentByUserId[issue.assignee.id] = 0;
+                    }
+                    mainApp.timeEstimatesByUserId[issue.assignee.id] += issue.time_stats.time_estimate / 3600;
+                    mainApp.timeSpentByUserId[issue.assignee.id] += issue.time_stats.total_time_spent / 3600;
                 }
-                if (!mainApp.timeSpentByUserId[issue.assignee.id]) {
-                    mainApp.timeSpentByUserId[issue.assignee.id] = 0;
-                }
-                mainApp.timeEstimatesByUserId[issue.assignee.id] += issue.time_stats.time_estimate / 3600.0;
-                mainApp.timeSpentByUserId[issue.assignee.id] += issue.time_stats.total_time_spent / 3600.0;
 
                 for (const assignee of issue.assignees) {
                     if (mainApp.assigneesById[assignee.id]) continue;
