@@ -123,7 +123,10 @@
             '.gi-goal { text-decoration: none; text-transform: uppercase; font-weight: bold; color: gray; cursor: pointer }' +
             '.gi-separator { font-weight: bolder; font-size: 24px; color: purple }' +
             'table.gi-tasks { width: 100% }' +
+            '.gi-task-list { list-style: none; padding: 0 }' +
             '.gi-task-assignee { color: gray }' +
+            '.gi-task-time-stats { }' +
+            '.gi-task-time-stats-separator { }' +
             '.gi-done { text-decoration: line-through; text-decoration-color: black; }' +
             'a.gi-default { text-decoration: none; color: black }' +
             'a.gi-blend { text-decoration: inherit; color:inherit }' +
@@ -154,8 +157,7 @@
                 selectedMilestoneIndex: 0,
                 sprintLabelTitles,
                 issuesByRepoName: {},
-                queryCategory: '', // '' | 'goal' | 'task'
-                query: '',
+                assigneesById: {}
             },
             methods: {
                 setSelectedMilestoneIndex,
@@ -233,9 +235,22 @@
             props: ['goalMilestone', 'groupName', 'repoName', 'issues'],
             template: '<div>' +
             '<h3><a class="gi-default" target="_blank" v-bind:href="\'https://gitlab.com/\' + groupName + \'/\' + repoName + \'/issues\'">{{ repoName }}</a></h3>' +
-            '<ul>' +
-            '<li v-for="issue in issues" v-bind:class="{ \'gi-done\': issue.state === \'closed\', \'gi-important\': goalMilestone && issue.milestone && (issue.milestone.title === goalMilestone.title) }">' +
-            '<span class="gi-task-assignee">[{{ (issue.assignee && issue.assignee.name) || "Unassigned" }}]</span> <a target="_blank" class="gi-blend" v-bind:href="issue.web_url">{{ issue.title }}</a>' +
+            '<ul class="gi-task-list">' +
+            '<li v-for="issue in issues" v-bind:class="{ \'gi-important\': goalMilestone && issue.milestone && (issue.milestone.title === goalMilestone.title) }">' +
+            '<span class="gi-task-assignee">' +
+            '[{{ (issue.assignee && issue.assignee.name) || "Unassigned" }}]' +
+            '</span>' +
+            '&nbsp;' +
+            '<span v-bind:class="{ \'gi-done\': issue.state === \'closed\' }">' +
+            '<a target="_blank" class="gi-blend" v-bind:href="issue.web_url">{{ issue.title }}</a>' +
+            '</span>' +
+            '&nbsp;' +
+            '<span v-if="issue.time_stats.human_time_estimate" class="gi-task-time-stats">(' +
+            '<span v-if="issue.time_stats.human_total_time_spent">{{ issue.time_stats.human_total_time_spent }}' +
+            '<span class="gi-task-time-stats-separator">/</span>' +
+            '</span>' +
+            '{{ issue.time_stats.human_time_estimate }}' +
+            ')</span>' +
             '</li></ul></div>'
         });
     }
@@ -257,6 +272,13 @@
             let issuesByRepoName = mainApp.issuesByRepoName;
             issuesByRepoName[repoName] = issues;
             mainApp.issuesByRepoName = Object.assign({}, issuesByRepoName);
+
+            for (const issue of issues) {
+                for (const assignee of issue.assignees) {
+                    if (mainApp.assigneesById[assignee.id]) continue;
+                    mainApp.assigneesById[assignee.id] = assignee;
+                }
+            }
         };
 
         if (!labelTitles) {
