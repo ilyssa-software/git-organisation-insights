@@ -487,7 +487,9 @@
             url: `https://gitlab.com/api/v4/groups/${groupId}/milestones?state=active&per_page=100`,
             onload: response => {
                 if (response.status != 200) return;
-                const milestones = JSON.parse(response.responseText);
+                const milestones = JSON.parse(response.responseText).sort((a, b) =>
+                    new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+                );
                 completion(milestones);
             }
         });
