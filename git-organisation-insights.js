@@ -149,7 +149,7 @@
         const mainAppElement = document.getElementById(elementId);
         mainAppElement.innerHTML = '<close-insights-button></close-insights-button>' +
             '<section-goals v-bind:milestones="milestones" v-bind:selected-index="selectedMilestoneIndex" v-bind:set-selected-index="setSelectedMilestoneIndex"></section-goals>' +
-            '<section-tasks v-bind:goal-milestone="milestones[selectedMilestoneIndex]" v-bind:group-name="groupName" v-bind:repo-names="repoNames" v-bind:issues-by-repo-name="issuesByRepoName" v-bind:sprint-label-titles="sprintLabelTitles" v-bind:populate-tasks="populateTasks"></section-tasks>';
+            '<section-tasks v-bind:goal-milestone="milestones[selectedMilestoneIndex]" v-bind:group-name="groupName" v-bind:repo-names="repoNames" v-bind:issues-by-repo-name="issuesByRepoName" v-bind:sprint-label-titles="sprintLabelTitles" v-bind:populate-tasks="populateTasks" v-bind:time-estimates-by-user-id="timeEstimatesByUserId" v-bind:time-spent-by-user-id="timeSpentByUserId"></section-tasks>';
 
         mainApp = new Vue({
             el: `#${elementId}`,
@@ -160,7 +160,9 @@
                 selectedMilestoneIndex: 0,
                 sprintLabelTitles,
                 issuesByRepoName: {},
-                assigneesById: {}
+                assigneesById: {},
+                timeEstimatesByUserId: {},
+                timeSpentByUserId: {}
             },
             methods: {
                 setSelectedMilestoneIndex,
@@ -177,7 +179,11 @@
             methods: {
                 hideInsights
             },
-            template: '<button class="gi-close" v-on:click="hideInsights">Close Insights</button>'
+            template: `
+            <button class="gi-close" v-on:click="hideInsights">
+                Close Insights
+            </button>
+            `
         });
     }
 
@@ -202,13 +208,13 @@
         registerComponentRepoTasksTree();
 
         Vue.component('section-tasks', {
-            props: ['goalMilestone', 'groupName', 'repoNames', 'issuesByRepoName', 'sprintLabelTitles', 'populateTasks'],
+            props: ['goalMilestone', 'groupName', 'repoNames', 'issuesByRepoName', 'sprintLabelTitles', 'populateTasks', 'timeEstimatesByUserId', 'timeSpentByUserId'],
             template: '<div>' +
             '<h2>Tasks</h2>' +
             '<task-filters v-bind:sprint-label-titles="sprintLabelTitles" v-bind:populate-tasks="populateTasks"></task-filters>' +
             '<table class="gi-tasks"><tr>' +
             '<td style="vertical-align: top;" v-for="repoName in repoNames">' +
-            '<repo-tasks-tree v-bind:goal-milestone="goalMilestone" v-bind:group-name="groupName" v-bind:repo-name="repoName" v-bind:issues="issuesByRepoName[repoName]"></repo-tasks-tree>' +
+            '<repo-tasks-tree v-bind:goal-milestone="goalMilestone" v-bind:group-name="groupName" v-bind:repo-name="repoName" v-bind:issues="issuesByRepoName[repoName]" v-bind:time-estimates-by-user-id="timeEstimatesByUserId" v-bind:time-spent-by-user-id="timeSpentByUserId"></repo-tasks-tree>' +
             '</td></tr></table></div>'
         });
     }
@@ -235,7 +241,7 @@
 
     function registerComponentRepoTasksTree() {
         Vue.component('repo-tasks-tree', {
-            props: ['goalMilestone', 'groupName', 'repoName', 'issues'],
+            props: ['goalMilestone', 'groupName', 'repoName', 'issues', 'timeEstimatesByUserId', 'timeSpentByUserId'],
             template: '<div>' +
             '<h3><a class="gi-default" target="_blank" v-bind:href="\'https://gitlab.com/\' + groupName + \'/\' + repoName + \'/issues\'">{{ repoName }}</a></h3>' +
             '<ul class="gi-task-list">' +
@@ -253,6 +259,12 @@
             '<span class="gi-task-time-stats-separator">/</span>' +
             '</span>' +
             '{{ issue.time_stats.human_time_estimate }}' +
+            ')</span>' +
+            '<span v-if="issue.assignee" class="gi-task-time-stats">(' +
+            '<span>{{ timeSpentByUserId[issue.assignee.id] || 0 }}' +
+            '<span class="gi-task-time-stats-separator">/</span>' +
+            '</span>' +
+            '{{ timeEstimatesByUserId[issue.assignee.id] || 0 }}' +
             ')</span>' +
             '</li></ul></div>'
         });
@@ -276,7 +288,19 @@
             issuesByRepoName[repoName] = issues;
             mainApp.issuesByRepoName = Object.assign({}, issuesByRepoName);
 
+            mainApp.timeEstimatesByUserId = {};
+            mainApp.timeSpentByUserId = {};
+
             for (const issue of issues) {
+                if (!mainApp.timeEstimatesByUserId[issue.assignee.id]) {
+                    mainApp.timeEstimatesByUserId[issue.assignee.id] = 0;
+                }
+                if (!mainApp.timeSpentByUserId[issue.assignee.id]) {
+                    mainApp.timeSpentByUserId[issue.assignee.id] = 0;
+                }
+                mainApp.timeEstimatesByUserId[issue.assignee.id] += issue.time_stats.time_estimate / 3600.0;
+                mainApp.timeSpentByUserId[issue.assignee.id] += issue.time_stats.total_time_spent / 3600.0;
+
                 for (const assignee of issue.assignees) {
                     if (mainApp.assigneesById[assignee.id]) continue;
                     mainApp.assigneesById[assignee.id] = assignee;
