@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Git Organisation Insights
 // @namespace    http://tampermonkey.net/
-// @version      0.0.4
+// @version      0.1.0
 // @description  Display organisation-wide goals and issues grouped by repositories via an insight button.
 // @author       Baris Sencan (baris@ilyssa.software)
 // @match        https://gitlab.com/**
